@@ -1,4 +1,4 @@
-Package: simper
+Package: simperSNP
 Title: Simulates SNP data-sets for simple and complex pedigrees with recombination.
 Version: 0.0.0.9000
 Authors@R: person("Susan", "Johnston", "Susan.Johnston@ed.ac.uk", role = c("aut", "cre"))
