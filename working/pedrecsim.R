@@ -5,8 +5,6 @@
 # 0. Set up working environment               #
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 
-options(stringsAsFactors = F)
-
 setwd("C:/Users/Susan Johnston/Desktop/PedRecSim/")
 
 library(reshape)
