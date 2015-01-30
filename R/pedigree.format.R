@@ -1,11 +1,18 @@
 #' Format Pedigree
 #'
 #' This function formats the pedigree for downstream analysis.
-#' @param ped Pedigree object in "simple" format (Three columns for ANIMAL, MOTHER and FATHER) or in "plink" format (Five to Six columns for FAMILY, ANIMAL, FATHER, MOTHER, SEX and Phenotype, where the phenotype column is optional). The simple argument can recognise the order of parents if they are named sensibly. Run simple.ped.name.rules() for an example. 
-#' @param pedigree.type Defaults to "simple", can also accept "plink" which is equivalent for for first 5 to 6 columns of a PLINK .ped file.
+#' @param ped Pedigree object in "simple" format (Three columns for ANIMAL, 
+#' MOTHER and FATHER) or in "plink" format (Five to Six columns for FAMILY,
+#' ANIMAL, FATHER, MOTHER, SEX and Phenotype, where the phenotype column is
+#' optional). The simple argument can recognise the order of parents if
+#' they are named sensibly. Run simple.ped.name.rules() for an example. 
+#' @param pedigree.type Defaults to "simple", can also accept "plink" which
+#' is equivalent for for first 5 to 6 columns of a PLINK .ped file.
 #' @keywords
 #' @export
+#'
 #' 
+
 
 pedigree.format <- function(ped, pedigree.type = "simple"){   # "plink"
   
