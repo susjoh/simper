@@ -10,12 +10,43 @@ library(reshape)
 library(plyr)
 library(kinship2)
 
+load("working/test.Rdata")
+rm(female.r, male.r, snp.mafs, snp.names)
 
-load("test.Rdata")
+# Possible inputs
 
 error.rate   <- 1e-5
 missing.rate <- 0.001
-minimum.r    <- 0.00001
+
+minimum.r        <- 0.00001
+minimum.r.male   <- 0.00001
+minimum.r.female <- 0.000005
+
+r        <- c(0.10, 0.10, 0.10, 0.2, 0.2, 0.2, 0.2, 0.2, 0)
+r.male   <- c(0.20, 0.20, 0.20, 0.4, 0.4, 0.4, 0.4, 0.4, 0)
+r.female <- c(0.05, 0.05, 0.05, 0.1, 0.1, 0.1, 0.1, 0.1, 0)
+
+snp.names <- paste0("SNP", 1:10)
+snp.mafs  <- c(0.1, 0.2, 0.3, 0.4, 0.5, 0.4, 0.3, 0.2, 0.1, 0.2)
+
+cM        <- c(10, 20, 30,  40,  60,  80, 100, 120, 140, 140)    # Give message saying that this is just an approximation
+cM.male   <- c(20, 40, 60, 100, 140, 180, 220, 260, 300, 300)
+cM.female <- c( 5, 10, 15,  25,  35,  45,  55,  65,  75,  75)
+
+# Crossover intereference parameter
+
+xover.min.r      <- NULL
+xover.min.cM     <- NULL
+xover.min.marker <- NULL
+
+xover.min.r.male       <- NULL
+xover.min.cM.male      <- NULL
+xover.min.marker.male  <- NULL
+
+xover.min.r.female      <- NULL
+xover.min.cM.female     <- NULL
+xover.min.marker.female <- NULL
+
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 # Prepare pedigree information                      #
@@ -23,36 +54,70 @@ minimum.r    <- 0.00001
 
 #~~ Check the pedigree format and rename variables for downstream analysis
 
-ped.name.rules <- writeLines("Pedigree columns must be named as follows:
-  Column 1 should be named ID or ANIMAL
-  Column 2 should be MOTHER, MUM, MOM or DAM
-  Column 3 should be FATHER, DAD, POP or SIRE")
-
-pedigree.check <- function(ped){
+pedigree.format <- function(ped, pedigree.type = "simple"){   # "plink"
   
-  ped <- ped[,1:3]
-  names(ped) <- toupper(names(ped))
-  if(!names(ped)[1] %in% c("ID", "ANIMAL"))                 stop(ped.name.rules())
-  if(!names(ped)[2] %in% c("MUM", "MOM", "MOTHER", "DAM"))  stop(ped.name.rules())
-  if(!names(ped)[3] %in% c("DAD", "POP", "FATHER", "SIRE")) stop(ped.name.rules())
+  simple.ped.name.rules <- function(){
+    writeLines("Pedigree columns must be named as follows:
+    ID should be named ID or ANIMAL
+    Mother should be MOTHER, MUM, MOM or DAM
+    Father should be FATHER, DAD, POP or SIRE")
+  }
+  
+  if(pedigree.type == "simple"){
+    
+    ped <- ped[,1:3]
+    names(ped) <- toupper(names(ped))
+    if(!names(ped)[1] %in% c("ID", "ANIMAL"))                 stop(simple.ped.name.rules())
+    if(!names(ped)[2] %in% c("MUM", "MOM", "MOTHER", "DAM", "DAD", "POP", "FATHER", "SIRE"))  stop(simple.ped.name.rules())
+    if(!names(ped)[3] %in% c("MUM", "MOM", "MOTHER", "DAM", "DAD", "POP", "FATHER", "SIRE")) stop(simple.ped.name.rules())
+    
+    names(ped)[which(names(ped) %in% c("MUM", "MOM", "MOTHER", "DAM"))] <- "MOTHER"
+    names(ped)[which(names(ped) %in% c("DAD", "POP", "FATHER", "SIRE"))] <- "FATHER"
+    
+    ped <- ped[,c("ANIMAL", "MOTHER", "FATHER")]
+
+    for(i in 1:3) ped[which(is.na(ped[,i])),i] <- 0
+    
+  }
+  
+  if(pedigree.type == "plink"){
+    
+    if(ncol(ped) == 5){
+      names(ped) <- c("FAMILY", "ANIMAL", "FATHER", "MOTHER", "SEX") #(1=male; 2=female; other=unknown)
+      print(paste("Assuming columns ordered as:", paste(names(ped), collapse = " ")))
+    }
+    
+    if(ncol(ped) == 6){
+      names(ped) <- c("FAMILY", "ANIMAL", "FATHER", "MOTHER", "PHENOTYPE") #(1=male; 2=female; other=unknown)
+      print(paste("Assuming columns ordered as:", paste(names(ped), collapse = " ")))
+    }
+    
+    if(!ncol(ped) %in% c(5, 6)){
+      stop("Number of columns does not match those expected of PLINK format")
+    }
+    
+    # re-code missing values
+    
+    for(i in 2:4) ped[which(is.na(ped[,i])),i] <- 0
+    for(i in 2:4) ped[which(ped[,i] == -9),i]  <- 0
+    
+    
+  }
   
 }
 
-pedigree.format <- function(ped){
-  
-  pedigree.check(ped)
-  
-  names(ped) <- c("ANIMAL", "MOTHER", "FATHER")
-  
-  for(i in 1:3) ped[which(is.na(ped[,i])),i] <- 0
-  
+convert.cM.r <- function(cM){
+  writeLines("Assuming 1cM is equivalent to r = 0.01")
+  diff(cM)/100
 }
 
-pedigree.format(ped)
+# simulate.pedigree <- function(ped, r, r.female, r.male, cM
+
+ped2 <- pedigree.format(ped, pedigree.type = "simple")
 
 #~~ melt pedfile to get a unique row for each gamete transfer
 
-transped <- melt(ped, id.vars = "ANIMAL")
+transped <- melt(ped[,c("ANIMAL", "MOTHER", "FATHER")], id.vars = "ANIMAL")
 transped$variable <- as.character(transped$variable)
 
 #~~ assign pedfile IDs to cohort and merge with transped
@@ -67,12 +132,9 @@ transped <- join(transped, cohorts)
 names(transped) <- c("Offspring.ID", "Parent.ID.SEX", "Parent.ID", "Cohort")
 transped$Key <- paste(transped$Parent.ID, transped$Offspring.ID, sep = "_")
 
-
 #~~ Recode founder gametes to 0 e.g. if one parent is unknown
 
 transped$Cohort[which(transped$Parent.ID == 0)] <- 0
-
-
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 # Run simulation                                    #
@@ -86,17 +148,18 @@ missing.tab <- NULL
 #~~ recode r = 0 if minimum.r is specified
 
 if(!is.null(minimum.r)){
-  female.r[which(female.r == 0)] <- minimum.r
-  male.r  [which(male.r   == 0)] <- minimum.r
+  r.female[which(r.female == 0)] <- minimum.r
+  r.male  [which(r.male   == 0)] <- minimum.r
 }
 
 #~~ Create a recombination template by sampling the probability of a crossover within an interval
-#   NB. THIS DOES NOT MODEL CROSSOVER INTERFERENCE
+
+
 
 
 template.list <- sapply(transped$Parent.ID.SEX, function(x){
-  if(x == "MOTHER") remp.temp <- which(((runif(length(female.r)) < female.r) + 0L) == 1)
-  if(x == "FATHER") remp.temp <- which(((runif(length(male.r  )) < male.r  ) + 0L) == 1)
+  if(x == "MOTHER") remp.temp <- which(((runif(length(r.female)) < r.female) + 0L) == 1)
+  if(x == "FATHER") remp.temp <- which(((runif(length(r.male  )) < r.male  ) + 0L) == 1)
   remp.temp
 })
 
@@ -155,7 +218,7 @@ for(cohort in 1:max(transped$Cohort)){
       parental.haplotypes <- haplo.list[transped$Parent.ID[j]][[1]][sample.int(2, 2, replace = F)]
       
       start.pos <- c(1, rec.pos[1:(length(rec.pos))] + 1)
-      stop.pos <- c(rec.pos, length(female.r) + 1)
+      stop.pos <- c(rec.pos, length(r.female) + 1)
       
       fragments <- list()
       
@@ -179,7 +242,7 @@ out.format <- "PLINKlike" # ?
 genotype.list <- list()
 
 for(i in 1:length(haplo.list)){
-  vec <- rep(NA, (length(female.r) + 1)*2)
+  vec <- rep(NA, (length(r.female) + 1)*2)
   
   if(geno.format == "phased"){
     vec[seq(1, length(vec), 2)] <- haplo.list[[i]][1][[1]]
