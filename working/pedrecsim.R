@@ -18,9 +18,9 @@ rm(female.r, male.r, snp.mafs, snp.names)
 error.rate   <- 1e-5
 missing.rate <- 0.001
 
-minimum.r        <- 0.00001
-minimum.r.male   <- 0.00001
-minimum.r.female <- 0.000005
+# minimum.r        <- 0.00001
+# minimum.r.male   <- 0.00001
+# minimum.r.female <- 0.000005
 
 r        <- c(0.10, 0.10, 0.10, 0.2, 0.2, 0.2, 0.2, 0.2, 0)
 r.male   <- c(0.20, 0.20, 0.20, 0.4, 0.4, 0.4, 0.4, 0.4, 0)
@@ -29,91 +29,57 @@ r.female <- c(0.05, 0.05, 0.05, 0.1, 0.1, 0.1, 0.1, 0.1, 0)
 snp.names <- paste0("SNP", 1:10)
 snp.mafs  <- c(0.1, 0.2, 0.3, 0.4, 0.5, 0.4, 0.3, 0.2, 0.1, 0.2)
 
-cM        <- c(10, 20, 30,  40,  60,  80, 100, 120, 140, 140)    # Give message saying that this is just an approximation
-cM.male   <- c(20, 40, 60, 100, 140, 180, 220, 260, 300, 300)
-cM.female <- c( 5, 10, 15,  25,  35,  45,  55,  65,  75,  75)
-
 # Crossover intereference parameter
 
-xover.min.r      <- NULL
-xover.min.cM     <- NULL
-xover.min.marker <- NULL
-
+xover.min.r            <- 0.5
 xover.min.r.male       <- NULL
-xover.min.cM.male      <- NULL
-xover.min.marker.male  <- NULL
+xover.min.r.female     <- NULL
 
-xover.min.r.female      <- NULL
-xover.min.cM.female     <- NULL
-xover.min.marker.female <- NULL
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 # Prepare pedigree information                      #
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 
-#~~ Check the pedigree format and rename variables for downstream analysis
+units         = "r"
+# r             = NULL
+r.male        = NULL
+r.female      = NULL
+pedigree.type = "simple"
+minimum.r = NULL
+phased.output <- TRUE
+out.format <- "PLINKlike" # ?
 
-pedigree.format <- function(ped, pedigree.type = "simple"){   # "plink"
-  
-  simple.ped.name.rules <- function(){
-    writeLines("Pedigree columns must be named as follows:
-    ID should be named ID or ANIMAL
-    Mother should be MOTHER, MUM, MOM or DAM
-    Father should be FATHER, DAD, POP or SIRE")
-  }
-  
-  if(pedigree.type == "simple"){
-    
-    ped <- ped[,1:3]
-    names(ped) <- toupper(names(ped))
-    if(!names(ped)[1] %in% c("ID", "ANIMAL"))                 stop(simple.ped.name.rules())
-    if(!names(ped)[2] %in% c("MUM", "MOM", "MOTHER", "DAM", "DAD", "POP", "FATHER", "SIRE"))  stop(simple.ped.name.rules())
-    if(!names(ped)[3] %in% c("MUM", "MOM", "MOTHER", "DAM", "DAD", "POP", "FATHER", "SIRE")) stop(simple.ped.name.rules())
-    
-    names(ped)[which(names(ped) %in% c("MUM", "MOM", "MOTHER", "DAM"))] <- "MOTHER"
-    names(ped)[which(names(ped) %in% c("DAD", "POP", "FATHER", "SIRE"))] <- "FATHER"
-    
-    ped <- ped[,c("ANIMAL", "MOTHER", "FATHER")]
+#~~ Check and format the recombination units
 
-    for(i in 1:3) ped[which(is.na(ped[,i])),i] <- 0
-    
-  }
-  
-  if(pedigree.type == "plink"){
-    
-    if(ncol(ped) == 5){
-      names(ped) <- c("FAMILY", "ANIMAL", "FATHER", "MOTHER", "SEX") #(1=male; 2=female; other=unknown)
-      print(paste("Assuming columns ordered as:", paste(names(ped), collapse = " ")))
-    }
-    
-    if(ncol(ped) == 6){
-      names(ped) <- c("FAMILY", "ANIMAL", "FATHER", "MOTHER", "PHENOTYPE") #(1=male; 2=female; other=unknown)
-      print(paste("Assuming columns ordered as:", paste(names(ped), collapse = " ")))
-    }
-    
-    if(!ncol(ped) %in% c(5, 6)){
-      stop("Number of columns does not match those expected of PLINK format")
-    }
-    
-    # re-code missing values
-    
-    for(i in 2:4) ped[which(is.na(ped[,i])),i] <- 0
-    for(i in 2:4) ped[which(ped[,i] == -9),i]  <- 0
-    
-    
-  }
-  
+if(units == "cM"){
+  message("Assuming 1cM is equivalent to r = 0.01")
+  if(!is.null(r       )) r        <- r/100
+  if(!is.null(r.male  )) r.male   <- r.male/100
+  if(!is.null(r.female)) r.female <- r.female/100
 }
 
-convert.cM.r <- function(cM){
-  writeLines("Assuming 1cM is equivalent to r = 0.01")
-  diff(cM)/100
+
+if(units = "r" & max(na.omit(r)) > 0.5)){
+  stop("Maximum r is greater than 0.5. Check that values are not in cM difference, or use units = \"cM\"")
 }
 
-# simulate.pedigree <- function(ped, r, r.female, r.male, cM
+if( is.null(r) &  is.null(r.male) &  is.null(r.female)) stop   ("No recombination rates specified.")
+if(!is.null(r) &  is.null(r.male) & !is.null(r.female)) warning("Recombination rate only defined in one sex. Missing sex defaults to r.")
+if(!is.null(r) & !is.null(r.male) &  is.null(r.female)) warning("Recombination rate only defined in one sex. Missing sex defaults to r.")
+if( is.null(r) &  is.null(r.male) & !is.null(r.female)) stop   ("Recombination rate only defined in one sex. Use r= ... ")
+if( is.null(r) & !is.null(r.male) &  is.null(r.female)) stop   ("Recombination rate only defined in one sex. Use r= ...")
 
-ped2 <- pedigree.format(ped, pedigree.type = "simple")
+if(!is.null(r) &  is.null(r.male) &  is.null(r.female)) message("Assuming that recombination rates are equal in both sexes.")
+
+#~~ Use r if no sex specific information given
+
+if(is.null(r.male  )) r.male   <- r
+if(is.null(r.female)) r.female <- r
+
+#~~ Format the pedigree
+
+ped2 <- pedigree.format(ped, pedigree.type = pedigree.type)
 
 #~~ melt pedfile to get a unique row for each gamete transfer
 
@@ -148,18 +114,54 @@ missing.tab <- NULL
 #~~ recode r = 0 if minimum.r is specified
 
 if(!is.null(minimum.r)){
-  r.female[which(r.female == 0)] <- minimum.r
-  r.male  [which(r.male   == 0)] <- minimum.r
+  r.female[which(r.female < minimum.r)] <- minimum.r
+  r.male  [which(r.male  < minimum.r)] <- minimum.r
 }
 
+#~~ Tidy up crossover interference parameters
+
+if( is.null(xover.min.r) &  is.null(xover.min.r.male) &  is.null(xover.min.r.female)) message ("Assuming no crossover interference.")
+if(!is.null(xover.min.r) &  is.null(xover.min.r.male) & !is.null(xover.min.r.female)) warning("Crossover interference parameter only defined in one sex. Missing sex defaults to xover.min.r.")
+if(!is.null(xover.min.r) & !is.null(xover.min.r.male) &  is.null(xover.min.r.female)) warning("Crossover interference parameter only defined in one sex. Missing sex defaults to xover.min.r.")
+if( is.null(xover.min.r) &  is.null(xover.min.r.male) & !is.null(xover.min.r.female)) stop   ("Crossover interference parameter only defined in one sex. Use xover.min.r= ... ")
+if( is.null(xover.min.r) & !is.null(xover.min.r.male) &  is.null(xover.min.r.female)) stop   ("Crossover interference parameter only defined in one sex. Use xover.min.r= ...")
+
+if(!is.null(xover.min.r) &  is.null(xover.min.r.male) &  is.null(xover.min.r.female)) message("Assuming that crossover interference is equal in both sexes.")
+
+#~~ Use r if no sex specific information given
+
+if(is.null(xover.min.r.male  )) xover.min.r.male   <- xover.min.r
+if(is.null(xover.min.r.female)) xover.min.r.female <- xover.min.r
+
+
 #~~ Create a recombination template by sampling the probability of a crossover within an interval
+
+r.cumu.female <- cumsum(r.female)
+r.cumu.male   <- cumsum(r.male)
 
 
 
 
 template.list <- sapply(transped$Parent.ID.SEX, function(x){
-  if(x == "MOTHER") remp.temp <- which(((runif(length(r.female)) < r.female) + 0L) == 1)
-  if(x == "FATHER") remp.temp <- which(((runif(length(r.male  )) < r.male  ) + 0L) == 1)
+  
+  if(is.null(xover.min.r.female) & x == "MOTHER") remp.temp <- which(((runif(length(r.female)) < r.female) + 0L) == 1)
+  if(is.null(xover.min.r.male)   & x == "FATHER") remp.temp <- which(((runif(length(r.male  )) < r.male  ) + 0L) == 1)
+    
+  if(!is.null(xover.min.r.female))
+    
+    if(length(remp.temp) > 1 & !is.null(xover.min.r.female) & min(diff(r.cumu.female[remp.temp])) < xover.min.r.female){
+      
+      while(!is.null(xover.min.r.female) & min(diff(r.cumu.female[remp.temp])) < xover.min.r.female) {
+        remp.temp <- which(((runif(length(r.female)) < r.female) + 0L) == 1)
+        print(remp.temp)
+      }
+      
+    }
+      
+      
+  
+
+  
   remp.temp
 })
 
@@ -236,21 +238,23 @@ for(cohort in 1:max(transped$Cohort)){
 #~~ Condense haplotypes into genotypes
 
 str(haplo.list)
-geno.format <- "phased" # "ordered"
-out.format <- "PLINKlike" # ?
 
 genotype.list <- list()
 
+if(phased.output == TRUE) message("Genotypes are phased - Maternal, Paternal")
+
 for(i in 1:length(haplo.list)){
+  
   vec <- rep(NA, (length(r.female) + 1)*2)
   
-  if(geno.format == "phased"){
+  if(phased.output == TRUE){
+    
     vec[seq(1, length(vec), 2)] <- haplo.list[[i]][1][[1]]
     vec[seq(2, length(vec), 2)] <- haplo.list[[i]][2][[1]]
-  }
   
-  if(geno.format == "ordered"){
-    haplo.tab <- data.frame(A = haplo.list[[i]][1][[1]],
+    } else {
+    
+      haplo.tab <- data.frame(A = haplo.list[[i]][1][[1]],
                             B = haplo.list[[i]][2][[1]])
     
     vec <- as.vector(apply(haplo.tab, 1, sort))
@@ -268,3 +272,4 @@ row.names(x) <- names(genotype.list)
 
 if(!is.null(snp.names)) colnames(x) <- rep(snp.names, each = 2)
   
+head(x)
