@@ -60,8 +60,9 @@ pedigree.format <- function(ped, pedigree.type = "simple"){   # "plink"
     
     for(i in 2:4) ped[which(is.na(ped[,i])),i] <- 0
     for(i in 2:4) ped[which(ped[,i] == -9),i]  <- 0
-    
-    
+        
   }
+  
+  ped
   
 }
