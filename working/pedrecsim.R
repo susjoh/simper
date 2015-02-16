@@ -41,8 +41,7 @@ xover.min.r.female     <- NULL
 # Prepare pedigree information                      #
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 
-units         = "r"
-# r             = NULL
+r             = NULL
 r.male        = NULL
 r.female      = NULL
 pedigree.type = "simple"
