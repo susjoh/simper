@@ -66,3 +66,33 @@ pedigree.format <- function(ped, pedigree.type = "simple"){   # "plink"
   ped
   
 }
+
+
+#' Extract a vector of founder individuals from a pedigree
+#'
+#' This function extracts a vector of founder IDs from a pedigree object. 
+#' A founder is an individual that does not have parents within the pedigree.
+#' @param ped Pedigree object in "simple" format (Three columns for ANIMAL, 
+#' MOTHER and FATHER) or in "plink" format (Five to Six columns for FAMILY,
+#' ANIMAL, FATHER, MOTHER, SEX and Phenotype, where the phenotype column is
+#' optional). The simple argument can recognise the order of parents if
+#' they are named sensibly. Run simple.ped.name.rules() for an example. 
+#' @param pedigree.type Defaults to "simple", can also accept "plink" which
+#' is equivalent for for first 5 to 6 columns of a PLINK .ped file.
+#' @keywords
+#' @export
+#'
+#' 
+
+
+founderIDs <- function(pedigree, pedigree.type = "simple"){
+  
+  ped <- pedigree.format(pedigree, pedigree.type = pedigree.type)
+  
+  cohorts <- data.frame(ANIMAL = ped[,1],
+                        Cohort = kindepth(ped[,1], ped[,3], ped[,2]))
+  
+  cohorts$ANIMAL[which(cohorts$Cohort == 0)]
+}
+  
+  
