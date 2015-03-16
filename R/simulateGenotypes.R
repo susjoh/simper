@@ -300,7 +300,7 @@ simulateGenos <- function(ped,
   x <- t(data.frame(genotype.list))
   row.names(x) <- names(genotype.list)
   
-  colnames(x) <- rep(snp.names[which(chromosome.ids == chromos)], each = 2)
+  colnames(x) <- rep(snp.names, each = 2)
   
   x <- x + 1
   
