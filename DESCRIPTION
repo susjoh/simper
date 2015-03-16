@@ -10,4 +10,4 @@ Description: This package simulates SNP data sets for simple and complex pedigre
 Depends: R (>= 3.1.2)
 License: MIT
 LazyData: true
-Imports: reshape, kinship2
+Imports: reshape, kinship2, plyr, GenABEL
