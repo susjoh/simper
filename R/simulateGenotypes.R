@@ -43,29 +43,28 @@ simulateGenos <- function(ped,
                           xover.min.cM = NULL,
                           xover.min.cM.male = NULL,
                           xover.min.cM.female = NULL){
+  #   
+  #   cM        = c(0,  5, 10,  15,   25,   35,   45,   55,   65,   65, 0,  5, 10,  15,   25,   35,   45,   55,   65,   65)
+  #   cM.male   =  c(0, 10, 20,  30,   50,   70,   90,  110,  130,  130, 0, 10, 20,  30,   50,   70,   90,  110,  130,  130)
+  #   cM.female =  c(0, 2.5,  5, 7.5, 12.5, 17.5, 22.5, 27.5, 32.5, 32.5, 0, 2.5,  5, 7.5, 12.5, 17.5, 22.5, 27.5, 32.5, 32.5)
+  #   chromosome.ids <- rep(c(23, 24), each = 10)
+  #   snp.names     <- NULL
+  #   founder.mafs  <- c(0.1, 0.2, 0.3, 0.4, 0.5, 0.4, 0.3, 0.2, 0.1, 0.2, 0.1, 0.2, 0.3, 0.4, 0.5, 0.4, 0.3, 0.2, 0.1, 0.2)
+  #   map.distances <- NULL
+  #   xover.min.cM            <- 25
+  #   xover.min.cM.male       <- NULL
+  #   xover.min.cM.female     <- NULL                             
+  #   error.rate = 1e-4
+  #   missing.rate = 0.001  
+  #   ped <- read.table("../../Recombination Analysis G/data/pedigree_20130920_13.txt", header = T)  
+  #   pedigree.type = "simple"
   
-  cM        = c(0,  5, 10,  15,   25,   35,   45,   55,   65,   65, 0,  5, 10,  15,   25,   35,   45,   55,   65,   65)
-  cM.male   =  c(0, 10, 20,  30,   50,   70,   90,  110,  130,  130, 0, 10, 20,  30,   50,   70,   90,  110,  130,  130)
-  cM.female =  c(0, 2.5,  5, 7.5, 12.5, 17.5, 22.5, 27.5, 32.5, 32.5, 0, 2.5,  5, 7.5, 12.5, 17.5, 22.5, 27.5, 32.5, 32.5)
-  chromosome.ids <- rep(c(23, 24), each = 10)
-  snp.names     <- NULL
-  founder.mafs  <- c(0.1, 0.2, 0.3, 0.4, 0.5, 0.4, 0.3, 0.2, 0.1, 0.2, 0.1, 0.2, 0.3, 0.4, 0.5, 0.4, 0.3, 0.2, 0.1, 0.2)
-  map.distances <- NULL
-  xover.min.cM            <- 25
-  xover.min.cM.male       <- NULL
-  xover.min.cM.female     <- NULL                             
-  error.rate = 1e-4
-  missing.rate = 0.001  
-   ped <- read.table("../../Recombination Analysis G/data/pedigree_20130920_13.txt", header = T)  
-   pedigree.type = "simple"
-
   
   require(plyr)
   require(reshape2)
   require(GenABEL)
   require(kinship2)
   
-  system.time({
   phased.output <-  TRUE
   
   
@@ -129,7 +128,7 @@ simulateGenos <- function(ped,
   
   #~~ Tidy up the SNP names and founder MAFs etc. if not defined
   
-  if(is.null(snp.names))  snp.names <- paste0("SNP", 1:20)
+  if(is.null(snp.names))  snp.names <- paste0("SNP", 1:length(cM.male))
   if(is.null(founder.mafs)){
     message("Founder MAFs have not been defined - assuming MAF = 0.5")
     founder.mafs <- rep(0.5, times = length(cM.male))
@@ -144,266 +143,247 @@ simulateGenos <- function(ped,
     chromosome.ids <- rep(1, length(cM.female))
   }
   
-  #~~ Create list for all the recombination template lists
-  
-  master.template.list <- list()
   
   #~~ RUN THE SIMULATIONS
+
   
-  for(chromos in unique(chromosome.ids)){
+  #~~ Convert to R
+  
+
+  r.male   <- diff(cM.male/100)
+  r.female <- diff(cM.female/100)
+  
+  r.male[which(r.male < 0)] <- 0.5
+  r.female[which(r.female < 0)] <- 0.5
+  
+  
+  #~~ Convert to r
+  
+  xover.min.r.male   <- xover.min.cM.male/100
+  xover.min.r.female <- xover.min.cM.female/100
+  
+  
+  #~~ Create a recombination template by sampling the probability of a crossover within an interval
+  
+  r.cumu.female <- cumsum(r.female)
+  r.cumu.male   <- cumsum(r.male)
+  
+  suppressWarnings({
     
-    message(paste("Running chromosome", chromos))
-    
-    #~~ Convert to R
-    
-    r.male   <- diff(cM.male[which(chromosome.ids == chromos)]/100)
-    r.female <- diff(cM.female[which(chromosome.ids == chromos)]/100)
-    
-    #~~ Convert to r
-    
-    xover.min.r.male   <- xover.min.cM.male/100
-    xover.min.r.female <- xover.min.cM.female/100
-    
-    
-    #~~ Create a recombination template by sampling the probability of a crossover within an interval
-    
-    r.cumu.female <- cumsum(r.female)
-    r.cumu.male   <- cumsum(r.male)
-    
-    suppressWarnings({
+    template.list <- sapply(transped$Parent.ID.SEX, function(x){
       
-      template.list <- sapply(transped$Parent.ID.SEX, function(x){
+      if(x == "MOTHER"){
         
-        if(x == "MOTHER"){
-          
-          remp.temp <- which(((runif(length(r.female)) < r.female) + 0L) == 1)
-          
-          if(length(remp.temp) > 1 & !is.null(xover.min.r.female)){
-            while(min(diff(r.cumu.female[remp.temp])) < xover.min.r.female) {
-              remp.temp <- which(((runif(length(r.female)) < r.female) + 0L) == 1)
-            }
+        remp.temp <- which(((runif(length(r.female)) < r.female) + 0L) == 1)
+        
+        if(length(remp.temp) > 1 & !is.null(xover.min.r.female)){
+          while(min(diff(r.cumu.female[remp.temp])) < xover.min.r.female) {
+            remp.temp <- which(((runif(length(r.female)) < r.female) + 0L) == 1)
           }
         }
+      }
+      
+      
+      if(x == "FATHER"){
+        remp.temp <- which(((runif(length(r.male  )) < r.male  ) + 0L) == 1)
         
-        
-        if(x == "FATHER"){
-          remp.temp <- which(((runif(length(r.male  )) < r.male  ) + 0L) == 1)
-          
-          if(length(remp.temp) > 1 & !is.null(xover.min.r.male)){
-            while(min(diff(r.cumu.female[remp.temp])) < xover.min.r.male) {
-              remp.temp <- which(((runif(length(r.male)) < r.male) + 0L) == 1)
-            }
+        if(length(remp.temp) > 1 & !is.null(xover.min.r.male)){
+          while(min(diff(r.cumu.female[remp.temp])) < xover.min.r.male) {
+            remp.temp <- which(((runif(length(r.male)) < r.male) + 0L) == 1)
           }
         }
-        
-        remp.temp
-      })
+      }
       
+      remp.temp
     })
     
-    #~~ Add key to list
+  })
+  
+  #~~ Add key to list
+  
+  names(template.list) <- transped$Key
+  
+  #~~ Calculate recombination count
+  
+  transped$RecombCount <- unlist(lapply(template.list, length))
+  transped$RecombCount[which(transped$Cohort == 0)] <- NA
+  
+  #~~ Create founder haplotypes by sampling allele frequencies
+  
+  head(transped)
+  
+  #~~ Create a list to sample haplotypes
+  
+  haplo.list <- list()
+  haplo.list[1:length(unique(transped$Offspring.ID))] <- list(list(MOTHER = NA, FATHER = NA))
+  names(haplo.list) <- unique(as.character(transped$Offspring.ID))
+  
+  #~~ Sample the founder haplotypes
+  
+  system.time(for(i in which(transped$Cohort == 0)){
+    if(transped$Parent.ID.SEX[i] == "MOTHER") haplo.list[as.character(transped$Offspring.ID[i])][[1]]$MOTHER <- (runif(length(founder.mafs)) < founder.mafs) + 0L
+    if(transped$Parent.ID.SEX[i] == "FATHER") haplo.list[as.character(transped$Offspring.ID[i])][[1]]$FATHER <- (runif(length(founder.mafs)) < founder.mafs) + 0L
+  })
+  
+  
+  #~~ Sample the non-founder haplotypes by cohort. This loops through cohorts sequentially as
+  #   parental haplotypes must exist before sampling.  
+  
+  for(cohort in 1:max(transped$Cohort)){
     
-    names(template.list) <- transped$Key
+    print(paste("Simulating haplotypes for cohort", cohort, "of", max(transped$Cohort)))
     
-    #~~ Add to master for return object
-    
-    master.template.list[[length(master.template.list) + 1]] <- template.list
-    names(master.template.list)[length(master.template.list)] <- as.character(chromos)
-    
-    
-    #~~ Calculate recombination count
-    
-    transped$RecombCount <- unlist(lapply(template.list, length))
-    transped$RecombCount[which(transped$Cohort == 0)] <- NA
-    
-    #~~ Create founder haplotypes by sampling allele frequencies
-    
-    head(transped)
-    
-    #~~ Create a list to sample haplotypes
-    
-    haplo.list <- list()
-    haplo.list[1:length(unique(transped$Offspring.ID))] <- list(list(MOTHER = NA, FATHER = NA))
-    names(haplo.list) <- unique(as.character(transped$Offspring.ID))
-    
-    #~~ Sample the founder haplotypes
-    
-    system.time(for(i in which(transped$Cohort == 0)){
-      if(transped$Parent.ID.SEX[i] == "MOTHER") haplo.list[as.character(transped$Offspring.ID[i])][[1]]$MOTHER <- (runif(length(founder.mafs[which(chromosome.ids == chromos)])) < founder.mafs[which(chromosome.ids == chromos)]) + 0L
-      if(transped$Parent.ID.SEX[i] == "FATHER") haplo.list[as.character(transped$Offspring.ID[i])][[1]]$FATHER <- (runif(length(founder.mafs[which(chromosome.ids == chromos)])) < founder.mafs[which(chromosome.ids == chromos)]) + 0L
-    })
-    
-    
-    #~~ Sample the non-founder haplotypes by cohort. This loops through cohorts sequentially as
-    #   parental haplotypes must exist before sampling.  
-    
-    for(cohort in 1:max(transped$Cohort)){
+    for(j in which(transped$Cohort == cohort)){
       
-      print(paste("Simulating haplotypes for cohort", cohort, "of", max(transped$Cohort)))
+      #~~ Pull out recombination information from template.list
       
-      for(j in which(transped$Cohort == cohort)){
+      rec.pos <- template.list[transped$Key[j]][[1]]
+      
+      #~~ If there are no recombination events, sample one of the parental haplotypes at random
+      
+      if(length(rec.pos) == 0){
+        haplo.list[as.character(transped$Offspring.ID[j])][[1]][transped$Parent.ID.SEX[j]] <- haplo.list[as.character(transped$Parent.ID[j])][[1]][sample.int(2, 1)]
+      }
+      
+      #~~ If there are recombination events, sample the order of the parental haplotypes,
+      #   exchange haplotypes and then transmit haplotype to offspring
+      
+      if(length(rec.pos) > 0){
         
-        #~~ Pull out recombination information from template.list
+        parental.haplotypes <- haplo.list[as.character(transped$Parent.ID[j])][[1]][sample.int(2, 2, replace = F)]
         
-        rec.pos <- template.list[transped$Key[j]][[1]]
+        start.pos <- c(1, rec.pos[1:(length(rec.pos))] + 1)
+        stop.pos <- c(rec.pos, length(r.female) + 1)
         
-        #~~ If there are no recombination events, sample one of the parental haplotypes at random
+        fragments <- list()
         
-        if(length(rec.pos) == 0){
-          haplo.list[as.character(transped$Offspring.ID[j])][[1]][transped$Parent.ID.SEX[j]] <- haplo.list[as.character(transped$Parent.ID[j])][[1]][sample.int(2, 1)]
+        for(k in 1:length(start.pos)){
+          if(k %% 2 != 0) fragments[[k]] <- parental.haplotypes[1][[1]][start.pos[k]:stop.pos[k]]
+          if(k %% 2 == 0) fragments[[k]] <- parental.haplotypes[2][[1]][start.pos[k]:stop.pos[k]]  
         }
         
-        #~~ If there are recombination events, sample the order of the parental haplotypes,
-        #   exchange haplotypes and then transmit haplotype to offspring
-        
-        if(length(rec.pos) > 0){
-          
-          parental.haplotypes <- haplo.list[as.character(transped$Parent.ID[j])][[1]][sample.int(2, 2, replace = F)]
-          
-          start.pos <- c(1, rec.pos[1:(length(rec.pos))] + 1)
-          stop.pos <- c(rec.pos, length(r.female) + 1)
-          
-          fragments <- list()
-          
-          for(k in 1:length(start.pos)){
-            if(k %% 2 != 0) fragments[[k]] <- parental.haplotypes[1][[1]][start.pos[k]:stop.pos[k]]
-            if(k %% 2 == 0) fragments[[k]] <- parental.haplotypes[2][[1]][start.pos[k]:stop.pos[k]]  
-          }
-          
-          haplo.list[as.character(transped$Offspring.ID[j])][[1]][transped$Parent.ID.SEX[j]] <- list(unlist(fragments))
-          
-        }
-      }
-    }
-    
-    #~~ Condense haplotypes into genotypes
-    
-    genotype.list <- list()
-    
-    if(phased.output == TRUE) message("Genotypes are phased - Maternal, Paternal")
-    
-    for(i in 1:length(haplo.list)){
-      
-      vec <- rep(NA, (length(r.female) + 1)*2)
-      
-      if(phased.output == TRUE){
-        
-        vec[seq(1, length(vec), 2)] <- haplo.list[[i]][1][[1]]
-        vec[seq(2, length(vec), 2)] <- haplo.list[[i]][2][[1]]
-        
-      } else {
-        
-        haplo.tab <- data.frame(A = haplo.list[[i]][1][[1]],
-                                B = haplo.list[[i]][2][[1]])
-        
-        vec <- as.vector(apply(haplo.tab, 1, sort))
-      }
-      
-      genotype.list[[i]] <- vec
-    }
-    
-    names(genotype.list) <- names(haplo.list)
-    
-    
-    x <- t(data.frame(genotype.list))
-    row.names(x) <- names(genotype.list)
-    
-    colnames(x) <- rep(snp.names[which(chromosome.ids == chromos)], each = 2)
-    
-    x <- x + 1
-    
-    #~~ Create errors in the dataset
-    
-    geno.count <- nrow(x) * (ncol(x)/2)
-    error.count <- as.integer(geno.count * error.rate)
-    missing.count <- as.integer(geno.count * missing.rate)
-    
-    if(error.count > 0){
-      
-      errortemp <- data.frame(row = sample(1:nrow(x), replace = T, size = error.count),
-                              col = sample(1:ncol(x), replace = T, size = error.count))
-      
-      
-      errortemp$col2 <- ifelse(errortemp$col %% 2 == 0, errortemp$col - 1, errortemp$col + 1)
-      
-      for(i in 1:nrow(errortemp)){
-        tempgeno <- paste(x[errortemp$row[i],c(errortemp$col[i], errortemp$col2[i])], collapse = "")
-        if(tempgeno == "11")            newgeno <- sample(c("12", "22"), size = 1) 
-        if(tempgeno %in% c("12", "21")) newgeno <- sample(c("11", "22"), size = 1) 
-        if(tempgeno == "22")            newgeno <- sample(c("11", "12"), size = 1)
-        x[errortemp$row[i],c(errortemp$col[i], errortemp$col2[i])] <- as.vector(strsplit(newgeno, split = "")[[1]])
+        haplo.list[as.character(transped$Offspring.ID[j])][[1]][transped$Parent.ID.SEX[j]] <- list(unlist(fragments))
         
       }
     }
-    
-    
-    if(missing.count > 0){
-      
-      missingtemp <- data.frame(row = sample(1:nrow(x), replace = T,  size = missing.count),
-                                col = sample(1:ncol(x), replace = T,  size = missing.count))
-      
-      
-      missingtemp$col2 <- ifelse(missingtemp$col %% 2 == 0, missingtemp$col - 1, missingtemp$col + 1)
-      
-      missingtemp <- data.frame(rbind(as.matrix(missingtemp[,c(1, 2)]),
-                                      as.matrix(missingtemp[,c(1, 3)])))
-      
-      for(i in 1:nrow(missingtemp)) x[missingtemp$row[i],missingtemp$col[i]] <- 0
-    }
-    
-    #~~ Create the return object in PLINK format
-    
-    newx <- data.frame(FAMILY = 1, ANIMAL = row.names(x))
-    suppressMessages(newx <- join(newx, ped))
-    newx$SEX <- ifelse(newx$ANIMAL %in% newx$FATHER, 1, 0)
-    newx$PHENO <- -9
-    
-    x <- cbind(newx, x)
-    
-    
-    mapobj <- data.frame(Chromosome = chromos,
-                         SNP.Name = snp.names[which(chromosome.ids == chromos)],
-                         bpPosition = map.distances[which(chromosome.ids == chromos)])
-    
-    genabel.phenotab <- x[,c("ANIMAL", "SEX")]
-    names(genabel.phenotab) <- c("id", "sex")
-    
-    #~~ generate a temporary file name
-    
-    tempfile <- paste(sample(letters, replace = T, size = 10), collapse = "")
-    
-    write.table(x,      paste0(tempfile, ".ped"), row.names = F, col.names = F, quote = F)
-    write.table(mapobj, paste0(tempfile, ".map"), row.names = F, col.names = F, quote = F)
-    write.table(genabel.phenotab, paste0(tempfile, ".pheno"), row.names = F, quote = F)
-    
-    
-    convert.snp.ped(pedfile = paste0(tempfile, ".ped"), 
-                    mapfile = paste0(tempfile, ".map"),
-                    outfile = paste0(tempfile, ".genabel"),
-                    traits = 1, strand = "u",  mapHasHeaderLine = F, bcast = F)
-    
-    
-    genabel.temp <- load.gwaa.data(genofile = paste0(tempfile, ".genabel"), 
-                                   phenofile = paste0(tempfile, ".pheno"))
-    
-    if(!"genabel.geno" %in% ls()){
-      genabel.geno <- genabel.temp
-    } else {
-      genabel.geno <- merge.gwaa.data(genabel.geno, genabel.temp)
-    }
-    
-    system("cmd", input = paste0("del ", tempfile, "*"), show.output.on.console = F)
-    
-    rm(cohort, error.count, fragments, genabel.phenotab, genabel.temp, geno.count, genotype.list,
-       haplo.list, i, j, k, mapobj, newx, parental.haplotypes, r.cumu.female, r.cumu.male,
-       r.female, r.male, rec.pos, start.pos, stop.pos, tempfile, template.list,     
-       vec, x, xover.min.r.female, xover.min.r.male, missing.count)
-    
-    
   }
   
-  })
+  #~~ Condense haplotypes into genotypes
+  
+  genotype.list <- list()
+  
+  if(phased.output == TRUE) message("Genotypes are phased - Maternal, Paternal")
+  
+  for(i in 1:length(haplo.list)){
+    
+    vec <- rep(NA, (length(r.female) + 1)*2)
+    
+    if(phased.output == TRUE){
+      
+      vec[seq(1, length(vec), 2)] <- haplo.list[[i]][1][[1]]
+      vec[seq(2, length(vec), 2)] <- haplo.list[[i]][2][[1]]
+      
+    } else {
+      
+      haplo.tab <- data.frame(A = haplo.list[[i]][1][[1]],
+                              B = haplo.list[[i]][2][[1]])
+      
+      vec <- as.vector(apply(haplo.tab, 1, sort))
+    }
+    
+    genotype.list[[i]] <- vec
+  }
+  
+  names(genotype.list) <- names(haplo.list)
+  
+  
+  x <- t(data.frame(genotype.list))
+  row.names(x) <- names(genotype.list)
+  
+  colnames(x) <- rep(snp.names[which(chromosome.ids == chromos)], each = 2)
+  
+  x <- x + 1
+  
+  #~~ Create errors in the dataset
+  
+  geno.count <- nrow(x) * (ncol(x)/2)
+  error.count <- as.integer(geno.count * error.rate)
+  missing.count <- as.integer(geno.count * missing.rate)
+  
+  if(error.count > 0){
+    
+    errortemp <- data.frame(row = sample(1:nrow(x), replace = T, size = error.count),
+                            col = sample(1:ncol(x), replace = T, size = error.count))
+    
+    
+    errortemp$col2 <- ifelse(errortemp$col %% 2 == 0, errortemp$col - 1, errortemp$col + 1)
+    
+    for(i in 1:nrow(errortemp)){
+      tempgeno <- paste(x[errortemp$row[i],c(errortemp$col[i], errortemp$col2[i])], collapse = "")
+      if(tempgeno == "11")            newgeno <- sample(c("12", "22"), size = 1) 
+      if(tempgeno %in% c("12", "21")) newgeno <- sample(c("11", "22"), size = 1) 
+      if(tempgeno == "22")            newgeno <- sample(c("11", "12"), size = 1)
+      x[errortemp$row[i],c(errortemp$col[i], errortemp$col2[i])] <- as.vector(strsplit(newgeno, split = "")[[1]])
+      
+    }
+  }
+  
+  
+  if(missing.count > 0){
+    
+    missingtemp <- data.frame(row = sample(1:nrow(x), replace = T,  size = missing.count),
+                              col = sample(1:ncol(x), replace = T,  size = missing.count))
+    
+    
+    missingtemp$col2 <- ifelse(missingtemp$col %% 2 == 0, missingtemp$col - 1, missingtemp$col + 1)
+    
+    missingtemp <- data.frame(rbind(as.matrix(missingtemp[,c(1, 2)]),
+                                    as.matrix(missingtemp[,c(1, 3)])))
+    
+    for(i in 1:nrow(missingtemp)) x[missingtemp$row[i],missingtemp$col[i]] <- 0
+  }
+  
+  #~~ Create the return object in PLINK format
+  
+  newx <- data.frame(FAMILY = 1, ANIMAL = row.names(x))
+  suppressMessages(newx <- join(newx, ped))
+  newx$SEX <- ifelse(newx$ANIMAL %in% newx$FATHER, 1, 0)
+  newx$PHENO <- -9
+  
+  x <- cbind(newx, x)
+  
+  
+  mapobj <- data.frame(Chromosome = chromosome.ids,
+                       SNP.Name = snp.names,
+                       bpPosition = map.distances)
+  
+  genabel.phenotab <- x[,c("ANIMAL", "SEX")]
+  names(genabel.phenotab) <- c("id", "sex")
+  
+  #~~ generate a temporary file name
+  
+  tempfile <- paste(sample(letters, replace = T, size = 10), collapse = "")
+  
+  write.table(x,      paste0(tempfile, ".ped"), row.names = F, col.names = F, quote = F)
+  write.table(mapobj, paste0(tempfile, ".map"), row.names = F, col.names = F, quote = F)
+  write.table(genabel.phenotab, paste0(tempfile, ".pheno"), row.names = F, quote = F)
+  
+  
+  convert.snp.ped(pedfile = paste0(tempfile, ".ped"), 
+                  mapfile = paste0(tempfile, ".map"),
+                  outfile = paste0(tempfile, ".genabel"),
+                  traits = 1, strand = "u",  mapHasHeaderLine = F, bcast = F)
+  
+  
+  genabel.geno <- load.gwaa.data(genofile = paste0(tempfile, ".genabel"), 
+                                 phenofile = paste0(tempfile, ".pheno"))
+
+  
+  system("cmd", input = paste0("del ", tempfile, "*"), show.output.on.console = F)
+  
+  # return object
+  
   return(list(genabel.object = genabel.geno,
-              templates = master.template.list))
+              templates = template.list))
 }
 
