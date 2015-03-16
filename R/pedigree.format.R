@@ -1,5 +1,4 @@
 #' Format Pedigree
-#'
 #' This function formats the pedigree for downstream analysis.
 #' @param ped Pedigree object in "simple" format (Three columns for ANIMAL, 
 #' MOTHER and FATHER) or in "plink" format (Five to Six columns for FAMILY,
@@ -8,8 +7,6 @@
 #' they are named sensibly. Run simple.ped.name.rules() for an example. 
 #' @param pedigree.type Defaults to "simple", can also accept "plink" which
 #' is equivalent for for first 5 to 6 columns of a PLINK .ped file.
-#' @export
-#' 
 
 
 pedigree.format <- function(ped, pedigree.type = "simple"){   # "plink"
@@ -92,8 +89,6 @@ pedigree.format <- function(ped, pedigree.type = "simple"){   # "plink"
 #' they are named sensibly. Run simple.ped.name.rules() for an example. 
 #' @param pedigree.type Defaults to "simple", can also accept "plink" which
 #' is equivalent for for first 5 to 6 columns of a PLINK .ped file.
-#' @keywords
-#' @export
 #'
 #' 
 
@@ -114,8 +109,6 @@ founderIDs <- function(pedigree, pedigree.type = "simple"){
 #'
 #' This function formats the pedigree for downstream analysis.
 #' @param ped Pedigree object. Run simple.ped.name.rules() for an example. 
-#' @keywords
-#' @export
 #'
 #' 
 

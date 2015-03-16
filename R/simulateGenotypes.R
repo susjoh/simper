@@ -26,10 +26,7 @@
 #' @param xover.min.cM numeric. Minimum cM distance between two crossovers
 #' @param xover.min.cM.male numeric. Minimum cM distance between two crossovers in males
 #' @param xover.min.cM.female numeric. Minimum cM distance between two crossovers in females
-#' @keywords
-#' @export
-#' 
-#' 
+
 
 
 simulateGenos <- function(ped,
