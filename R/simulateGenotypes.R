@@ -54,7 +54,11 @@ simulateGenos <- function(ped,
 #   xover.min.cM            <- 25
 #   xover.min.cM.male       <- NULL
 #   xover.min.cM.female     <- NULL                             
+#   error.rate = 1e-4
+#   missing.rate = 0.001  
+#   ped <- read.table("../../Recombination Analysis G/data/pedigree_20130920_13.txt", header = T)  
 #   
+  
   require(plyr)
   require(reshape2)
   require(GenABEL)
@@ -138,6 +142,12 @@ simulateGenos <- function(ped,
     chromosome.ids <- rep(1, length(cM.female))
   }
   
+  #~~ Create list for all the recombination template lists
+  
+  master.template.list <- list()
+  
+  #~~ RUN THE SIMULATIONS
+  
   for(chromos in unique(chromosome.ids)){
     
     message(paste("Running chromosome", chromos))
@@ -192,6 +202,12 @@ simulateGenos <- function(ped,
     #~~ Add key to list
     
     names(template.list) <- transped$Key
+    
+    #~~ Add to master for return object
+    
+    master.template.list[[length(master.template.list) + 1]] <- template.list
+    names(master.template.list)[length(master.template.list)] <- as.character(chromos)
+    
     
     #~~ Calculate recombination count
     
@@ -381,8 +397,10 @@ simulateGenos <- function(ped,
        r.female, r.male, rec.pos, start.pos, stop.pos, tempfile, template.list,     
        vec, x, xover.min.r.female, xover.min.r.male, missing.count)
     
+    
   }
   
-  genabel.geno
+  return(list(genabel.object = genabel.geno,
+              templates = master.template.list))
 }
 
