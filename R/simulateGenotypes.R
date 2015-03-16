@@ -2,7 +2,7 @@
 #' Simulate recombination events in R
 #' 
 #' This function simulates genotypes within a pedigree, based on centiMorgan map
-#' distances.
+#' distances. Outputs genotypes as a GenABEL gwaa object.
 #' @param ped data.frame of pedigree in "simple" format (Three columns for 
 #'   ANIMAL, MOTHER and FATHER) or in "plink" format (Five to Six columns for 
 #'   FAMILY, ANIMAL, FATHER, MOTHER, SEX and Phenotype, where the phenotype 
