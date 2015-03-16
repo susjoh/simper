@@ -27,16 +27,31 @@ pedigree.format <- function(ped, pedigree.type = "simple"){   # "plink"
     
     ped <- ped[,1:3]
     names(ped) <- toupper(names(ped))
-    if(!names(ped)[1] %in% c("ID", "ANIMAL"))                 stop(simple.ped.name.rules())
-    if(!names(ped)[2] %in% c("MUM", "MOM", "MOTHER", "DAM", "DAD", "POP", "FATHER", "SIRE"))  stop(simple.ped.name.rules())
-    if(!names(ped)[3] %in% c("MUM", "MOM", "MOTHER", "DAM", "DAD", "POP", "FATHER", "SIRE")) stop(simple.ped.name.rules())
-    
+    if(!all(names(ped) %in% c("ID", "ANIMAL", "MUM", "MOM", 
+                             "MOTHER", "DAM", "DAD", "POP", "FATHER", "SIRE"))) stop(simple.ped.name.rules())
+
+    names(ped)[which(names(ped) %in% c("ID", "ANIMAL"))] <- "ANIMAL"
     names(ped)[which(names(ped) %in% c("MUM", "MOM", "MOTHER", "DAM"))] <- "MOTHER"
     names(ped)[which(names(ped) %in% c("DAD", "POP", "FATHER", "SIRE"))] <- "FATHER"
     
     ped <- ped[,c("ANIMAL", "MOTHER", "FATHER")]
     
     for(i in 1:3) ped[which(is.na(ped[,i])),i] <- 0
+    
+    if(any(!ped$MOTHER %in% ped$ANIMAL)){
+    ped <- rbind(data.frame(ANIMAL = ped$MOTHER[which(!ped$MOTHER %in% ped$ANIMAL)],
+                            MOTHER = 0, FATHER = 0),
+                 ped)
+    }
+    
+    if(any(!ped$FATHER %in% ped$ANIMAL)){
+      ped <- rbind(data.frame(ANIMAL = ped$FATHER[which(!ped$FATHER %in% ped$ANIMAL)],
+                            MOTHER = 0, FATHER = 0),
+                   ped)
+    }
+    
+    ped <- subset(ped, ANIMAL != 0)
+    ped <- droplevels(unique(ped))
     
   }
   
@@ -60,7 +75,7 @@ pedigree.format <- function(ped, pedigree.type = "simple"){   # "plink"
     
     for(i in 2:4) ped[which(is.na(ped[,i])),i] <- 0
     for(i in 2:4) ped[which(ped[,i] == -9),i]  <- 0
-        
+    
   }
   
   ped
@@ -94,5 +109,37 @@ founderIDs <- function(pedigree, pedigree.type = "simple"){
   
   cohorts$ANIMAL[which(cohorts$Cohort == 0)]
 }
+
+
+
+#' Format Pedigree for genedrop analysis
+#'
+#' This function formats the pedigree for downstream analysis.
+#' @param ped Pedigree object. Run simple.ped.name.rules() for an example. 
+#' @keywords
+#' @export
+#'
+#' 
+
+pedigree.format.genedrop <- function(ped){
+  names(ped) <- toupper(names(ped))
+  if(!names(ped)[1] %in% c("ID", "ANIMAL"))                 stop(simple.ped.name.rules())
+  if(!names(ped)[2] %in% c("MUM", "MOM", "MOTHER", "DAM", "DAD", "POP", "FATHER", "SIRE")) stop(simple.ped.name.rules())
+  if(!names(ped)[3] %in% c("MUM", "MOM", "MOTHER", "DAM", "DAD", "POP", "FATHER", "SIRE")) stop(simple.ped.name.rules())
   
+  names(ped)[which(names(ped) %in% c("ID", "ANIMAL"))] <- "ANIMAL"
+  names(ped)[which(names(ped) %in% c("MUM", "MOM", "MOTHER", "DAM"))] <- "MOTHER"
+  names(ped)[which(names(ped) %in% c("DAD", "POP", "FATHER", "SIRE"))] <- "FATHER"
   
+  ped <- ped[,c("ANIMAL", "MOTHER", "FATHER")]
+  ped$Cohort <- cohort
+  
+  for(i in which(names(ped) %in% c("ANIMAL", "MOTHER", "FATHER"))) ped[which(is.na(ped[,i])),i] <- 0
+  
+  #~~ ped must have a line for all mothers and fathers in ID
+  
+  if(any(!ped$MOTHER %in% ped$ANIMAL & !ped$MOTHER == 0)) stop("MOTHER ids missing from ID")
+  if(any(!ped$FATHER %in% ped$ANIMAL & !ped$FATHER == 0)) stop("FATHER ids missing from ID")
+  
+  ped
+}
