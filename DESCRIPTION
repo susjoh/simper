@@ -1,7 +1,7 @@
 Package: simperSNP
-Title: Simulates SNP data-sets for simple and complex pedigrees with recombination.
+Title: Simulates SNP Datasets For Simple And Complex Pedigrees With Recombination.
 Version: 0.0.0.9000
-Authors@R: person("Susan", "Johnston", "Susan.Johnston@ed.ac.uk", role = c("aut", "cre"))
+Authors@R: person("Susan", "Johnston", email = "Susan.Johnston@ed.ac.uk", role = c("aut", "cre"))
 Description: This package simulates SNP data sets for simple and complex pedigrees. Founder
     individuals are assigned haplotypes based on founder allele frequencies. Haplotypes
     are then transmitted to descendants with recombination sampled from linkage map
