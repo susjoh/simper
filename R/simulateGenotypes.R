@@ -55,6 +55,10 @@ simulateGenos <- function(ped,
 #   xover.min.cM.male       <- NULL
 #   xover.min.cM.female     <- NULL                             
 #   
+  require(plyr)
+  require(reshape2)
+  require(GenABEL)
+  require(kinship2)
   
   phased.output <-  TRUE
   
