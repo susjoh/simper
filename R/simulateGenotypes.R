@@ -379,7 +379,8 @@ simulateGenos <- function(ped,
                                  phenofile = paste0(tempfile, ".pheno"))
 
   
-  system("cmd", input = paste0("del ", tempfile, "*"), show.output.on.console = F)
+  if(Sys.info()["sysname"] == "Windows") system("cmd", input = paste0("rm ", tempfile, "*"), show.output.on.console = F)
+  if(Sys.info()["sysname"] != "Windows") system(input = paste0("rm ", tempfile, "*"), show.output.on.console = F)
   
   # return object
   
