@@ -380,7 +380,7 @@ simulateGenos <- function(ped,
 
   
   if(Sys.info()["sysname"] == "Windows") system("cmd", input = paste0("rm ", tempfile, "*"), show.output.on.console = F)
-  if(Sys.info()["sysname"] != "Windows") system(input = paste0("rm ", tempfile, "*"), show.output.on.console = F)
+  if(Sys.info()["sysname"] != "Windows") system(input = paste0("rm ", tempfile, "*"))
   
   # return object
   
