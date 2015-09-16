@@ -43,22 +43,7 @@ simulateGenos <- function(ped,
                           xover.min.cM = NULL,
                           xover.min.cM.male = NULL,
                           xover.min.cM.female = NULL){
-  #   
-  #   cM        = c(0,  5, 10,  15,   25,   35,   45,   55,   65,   65, 0,  5, 10,  15,   25,   35,   45,   55,   65,   65)
-  #   cM.male   =  c(0, 10, 20,  30,   50,   70,   90,  110,  130,  130, 0, 10, 20,  30,   50,   70,   90,  110,  130,  130)
-  #   cM.female =  c(0, 2.5,  5, 7.5, 12.5, 17.5, 22.5, 27.5, 32.5, 32.5, 0, 2.5,  5, 7.5, 12.5, 17.5, 22.5, 27.5, 32.5, 32.5)
-  #   chromosome.ids <- rep(c(23, 24), each = 10)
-  #   snp.names     <- NULL
-  #   founder.mafs  <- c(0.1, 0.2, 0.3, 0.4, 0.5, 0.4, 0.3, 0.2, 0.1, 0.2, 0.1, 0.2, 0.3, 0.4, 0.5, 0.4, 0.3, 0.2, 0.1, 0.2)
-  #   map.distances <- NULL
-  #   xover.min.cM            <- 25
-  #   xover.min.cM.male       <- NULL
-  #   xover.min.cM.female     <- NULL                             
-  #   error.rate = 1e-4
-  #   missing.rate = 0.001  
-  #   ped <- read.table("../../Recombination Analysis G/data/pedigree_20130920_13.txt", header = T)  
-  #   pedigree.type = "simple"
-  
+
   
   require(plyr)
   require(reshape2)
