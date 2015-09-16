@@ -8,3 +8,4 @@ Plans for future versions:
 * Modelling of crossover intereference.
 * Sampling founders based on haplotype frequencies
 * Simulation of QTL of specified effect sizes
+* Gene-drop analyses accounting for population age structure
